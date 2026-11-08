@@ -51,29 +51,28 @@ Testy:
 npm test
 ```
 
-## Nasazení na Cloudflare
+## Nasazení a vývoj
 
-Databáze `kouzelna-skola-poctu` už na Cloudflare existuje a má založené tabulky (její ID je ve `wrangler.toml`). Pro nasazení stačí na počítači v naklonovaném repozitáři spustit:
+Hra běží na https://kouzelna-skola-poctu.michal-prouza.workers.dev.
 
-```bash
-npm install
-```
+- **Automatické nasazení:** Cloudflare Workers Builds sleduje větev `main`. Po každé změně v ní hru sám sestaví (`npm run build`) a nasadí (`npx wrangler deploy`). Průběh je v Cloudflare u Workeru v záložce Deployments.
+- **Kontrola na GitHubu:** u každého pull requestu a pushe do `main` běží GitHub Action (`.github/workflows/ci.yml`). Spustí typovou kontrolu, testy a sestavení.
+- **Postup změn:** změna se připraví ve vedlejší větvi, otevře se pull request do `main`, po zelené kontrole se sloučí a nasadí se sama.
+- **Databáze:** `kouzelna-skola-poctu` (ID ve `wrangler.toml`). Nové migrace v `migrations/` se při nasazení samy neprovedou, je potřeba je spustit zvlášť:
 
-```bash
-npx wrangler login
-```
+  ```bash
+  npm run db:migrate:remote
+  ```
 
-```bash
-npm run deploy
-```
+- **Ruční nasazení z počítače** (když je potřeba):
 
-Při `wrangler login` vyber účet, kde je databáze. Hra pak poběží na adrese `https://kouzelna-skola-poctu.<subdoména-účtu>.workers.dev`. Stejnými příkazy se nasazuje i každá další verze.
+  ```bash
+  npx wrangler login
+  ```
 
-Když přibude nová migrace v `migrations/`, spusť před nasazením:
-
-```bash
-npm run db:migrate:remote
-```
+  ```bash
+  npm run deploy
+  ```
 
 ## Úpravy
 
