@@ -53,25 +53,27 @@ npm test
 
 ## Nasazení na Cloudflare
 
-1. Vytvoř databázi a zkopíruj vypsané `database_id` do `wrangler.toml`:
+Databáze `kouzelna-skola-poctu` už na Cloudflare existuje a má založené tabulky (její ID je ve `wrangler.toml`). Pro nasazení stačí na počítači v naklonovaném repozitáři spustit:
 
-   ```bash
-   npx wrangler d1 create kouzelna-skola-poctu
-   ```
+```bash
+npm install
+```
 
-2. Nahraj schéma databáze:
+```bash
+npx wrangler login
+```
 
-   ```bash
-   npm run db:migrate:remote
-   ```
+```bash
+npm run deploy
+```
 
-3. Nasaď hru:
+Při `wrangler login` vyber účet, kde je databáze. Hra pak poběží na adrese `https://kouzelna-skola-poctu.<subdoména-účtu>.workers.dev`. Stejnými příkazy se nasazuje i každá další verze.
 
-   ```bash
-   npm run deploy
-   ```
+Když přibude nová migrace v `migrations/`, spusť před nasazením:
 
-Hra pak poběží na adrese `https://kouzelna-skola-poctu.<tvůj-účet>.workers.dev`.
+```bash
+npm run db:migrate:remote
+```
 
 ## Úpravy
 

@@ -10,6 +10,5 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "kouzelna-skola-poctu"
-# Po `wrangler d1 create kouzelna-skola-poctu` sem doplň skutečné ID.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "4713a25e-e148-4b0c-ad7e-b6cb0490e793"
 migrations_dir = "migrations"
