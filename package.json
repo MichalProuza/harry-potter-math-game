@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.worker.json",
     "test": "vitest run",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "preview": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run typecheck && npm run build && wrangler deploy"
   },
   "dependencies": {
     "preact": "^10.29.8"
