@@ -213,7 +213,7 @@ export function Results({
       </div>
       {outcome.dailyBonus && (
         <p class="badge">
-          🔥 Denní úkol splněn! +10 zlaťáků · série {outcome.streak} {outcome.streak === 1 ? 'den' : outcome.streak < 5 ? 'dny' : 'dní'}
+          🔥 Denní úkol splněn! +10 galeonů · série {outcome.streak} {outcome.streak === 1 ? 'den' : outcome.streak < 5 ? 'dny' : 'dní'}
         </p>
       )}
       {outcome.rankUp && <p class="badge badge--gold">🎓 Nová hodnost: {outcome.rankUp}!</p>}

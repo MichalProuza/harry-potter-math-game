@@ -152,7 +152,7 @@ function PlayerOverview({ id }: { id: number }) {
           </div>
         </div>
         <p class="muted">
-          Celkem {state.lessonsTotal} lekcí · {state.xp} XP · {state.coins} zlaťáků
+          Celkem {state.lessonsTotal} lekcí · {state.xp} XP · {state.coins} galeonů
         </p>
       </section>
 

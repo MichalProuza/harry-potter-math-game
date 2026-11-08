@@ -16,7 +16,7 @@ export function Stars({ count, max = 3, size = 'md' }: { count: number; max?: nu
 
 export function Coins({ amount }: { amount: number }) {
   return (
-    <span class="coins" title="Zlaťáky">
+    <span class="coins" title="Galeony">
       <span class="coin">🪙</span> {amount}
     </span>
   );
@@ -29,7 +29,7 @@ interface TopBarProps {
   children?: ComponentChildren;
 }
 
-/** Horní lišta se zlaťáky, hodností a tlačítkem zpět. */
+/** Horní lišta s galeony, hodností a tlačítkem zpět. */
 export function TopBar({ session, onBack, title, children }: TopBarProps) {
   const rank = rankFor(session.state.xp);
   return (

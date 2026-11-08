@@ -1,4 +1,19 @@
-export type HouseId = 'fenix' | 'sova' | 'drak' | 'jednorozec';
+export type HouseId = 'nebelvir' | 'havraspar' | 'zmijozel' | 'mrzimor';
+
+/** Původní označení kolejí z první verze hry – převádějí se na nová. */
+const LEGACY_IDS: Record<string, HouseId> = {
+  fenix: 'nebelvir',
+  sova: 'havraspar',
+  drak: 'zmijozel',
+  jednorozec: 'mrzimor',
+};
+
+/** Vrátí platné ID koleje (převede i označení z první verze), nebo null. */
+export function toHouseId(id: unknown): HouseId | null {
+  if (typeof id !== 'string') return null;
+  if (id in LEGACY_IDS) return LEGACY_IDS[id];
+  return HOUSES.some((h) => h.id === id) ? (id as HouseId) : null;
+}
 
 export interface House {
   id: HouseId;
@@ -9,23 +24,16 @@ export interface House {
   secondary: string;
 }
 
-/** Vlastní koleje inspirované kouzelnickou školou (bez oficiálních názvů). */
 export const HOUSES: House[] = [
-  { id: 'fenix', name: 'Kolej Fénixe', trait: 'odvaha a srdce', icon: '🔥', primary: '#a4232f', secondary: '#e7b53b' },
-  { id: 'sova', name: 'Kolej Sovy', trait: 'moudrost a zvídavost', icon: '🦉', primary: '#1f4f99', secondary: '#c8a26a' },
-  { id: 'drak', name: 'Kolej Draka', trait: 'odhodlání a důvtip', icon: '🐉', primary: '#1d6b45', secondary: '#c0c6cc' },
-  {
-    id: 'jednorozec',
-    name: 'Kolej Jednorožce',
-    trait: 'laskavost a věrnost',
-    icon: '🦄',
-    primary: '#6b3fa0',
-    secondary: '#f2c94c',
-  },
+  { id: 'nebelvir', name: 'Nebelvír', trait: 'odvaha a statečnost', icon: '🦁', primary: '#9c1c26', secondary: '#e3b23c' },
+  { id: 'havraspar', name: 'Havraspár', trait: 'moudrost a důvtip', icon: '🦅', primary: '#1f3f8a', secondary: '#b08d57' },
+  { id: 'zmijozel', name: 'Zmijozel', trait: 'ctižádost a odhodlání', icon: '🐍', primary: '#1a5c38', secondary: '#c0c6cc' },
+  { id: 'mrzimor', name: 'Mrzimor', trait: 'věrnost a laskavost', icon: '🦡', primary: '#d9a21b', secondary: '#2b2522' },
 ];
 
-export function getHouse(id: HouseId): House {
-  return HOUSES.find((h) => h.id === id) ?? HOUSES[0];
+export function getHouse(id: HouseId | string): House {
+  const hid = toHouseId(id);
+  return HOUSES.find((h) => h.id === hid) ?? HOUSES[0];
 }
 
 /** Otázky moudrého klobouku. Každá odpověď dává bod jedné koleji. */
@@ -33,28 +41,28 @@ export const SORTING_QUESTIONS: Array<{ q: string; answers: Array<{ text: string
   {
     q: 'Co bys nejraději dělala v kouzelnické škole?',
     answers: [
-      { text: 'Létala na koštěti', house: 'fenix' },
-      { text: 'Četla staré knihy kouzel', house: 'sova' },
-      { text: 'Vařila tajné lektvary', house: 'drak' },
-      { text: 'Starala se o kouzelná zvířata', house: 'jednorozec' },
+      { text: 'Létala na koštěti', house: 'nebelvir' },
+      { text: 'Četla staré knihy kouzel', house: 'havraspar' },
+      { text: 'Vařila tajné lektvary', house: 'zmijozel' },
+      { text: 'Starala se o kouzelná zvířata', house: 'mrzimor' },
     ],
   },
   {
     q: 'Jaké kouzlo by ses chtěla naučit jako první?',
     answers: [
-      { text: 'Štít proti zlým kouzlům', house: 'fenix' },
-      { text: 'Kouzlo, které odpoví na každou otázku', house: 'sova' },
-      { text: 'Kouzlo neviditelnosti', house: 'drak' },
-      { text: 'Kouzlo, které uzdraví kamaráda', house: 'jednorozec' },
+      { text: 'Štít proti zlým kouzlům', house: 'nebelvir' },
+      { text: 'Kouzlo, které odpoví na každou otázku', house: 'havraspar' },
+      { text: 'Kouzlo neviditelnosti', house: 'zmijozel' },
+      { text: 'Kouzlo, které uzdraví kamaráda', house: 'mrzimor' },
     ],
   },
   {
     q: 'Na výletě v Zakázaném lese najdeš tajné dveře. Co uděláš?',
     answers: [
-      { text: 'Hned je otevřu!', house: 'fenix' },
-      { text: 'Prozkoumám nápis na dveřích', house: 'sova' },
-      { text: 'Vymyslím chytrý plán', house: 'drak' },
-      { text: 'Zavolám kamarády, ať jdeme spolu', house: 'jednorozec' },
+      { text: 'Hned je otevřu!', house: 'nebelvir' },
+      { text: 'Prozkoumám nápis na dveřích', house: 'havraspar' },
+      { text: 'Vymyslím chytrý plán', house: 'zmijozel' },
+      { text: 'Zavolám kamarády, ať jdeme spolu', house: 'mrzimor' },
     ],
   },
 ];
