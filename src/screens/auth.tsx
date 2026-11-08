@@ -140,6 +140,7 @@ export function Profiles({ go }: { go: Go }) {
           </button>
         </div>
       )}
+      <p class="version">verze {__APP_VERSION__}</p>
     </main>
   );
 }
