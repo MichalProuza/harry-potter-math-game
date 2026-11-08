@@ -3,7 +3,7 @@ import { buildLesson } from '../src/game/lesson';
 import { BRANCHES, LESSONS_TO_PASS } from '../src/game/levels';
 import { ADD_SUB_GENERATORS, makeProblem } from '../src/game/problems';
 import { seededRng } from '../src/game/random';
-import { applyLesson, buyItem, newState, unlockedUpTo } from '../src/game/state';
+import { applyLesson, buyItem, newState, normalizeState, unlockedUpTo } from '../src/game/state';
 
 /** Spočítá zadání `display`, kde `?` nahradí odpověď, a ověří rovnost. */
 function holds(display: string, answer: number): boolean {
@@ -110,11 +110,22 @@ describe('postup a odměny', () => {
     expect(unlockedUpTo(newState(), 'premenovani', { premenovani: 5 })).toBe(5);
   });
 
-  it('obchod: nákup odečte zlaťáky a věc rovnou nasadí', () => {
+  it('obchod: nákup odečte galeony a věc rovnou nasadí', () => {
     const s = { ...newState(), coins: 50 };
     const after = buyItem(s, 'wand-oak');
     expect(after.coins).toBe(10);
     expect(after.equipped.wand).toBe('wand-oak');
     expect(() => buyItem(after, 'pet-dragon')).toThrow();
+  });
+});
+
+describe('koleje', () => {
+  it('profily z první verze dostanou odpovídající kolej', () => {
+    expect(normalizeState({ house: 'fenix' }).house).toBe('nebelvir');
+    expect(normalizeState({ house: 'sova' }).house).toBe('havraspar');
+    expect(normalizeState({ house: 'drak' }).house).toBe('zmijozel');
+    expect(normalizeState({ house: 'jednorozec' }).house).toBe('mrzimor');
+    expect(normalizeState({ house: 'mrzimor' }).house).toBe('mrzimor');
+    expect(normalizeState({}).house).toBe(null);
   });
 });

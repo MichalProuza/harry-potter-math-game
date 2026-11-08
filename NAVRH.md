@@ -9,12 +9,12 @@ Webová hra pro osmiletou holku na procvičování **malé násobilky** a **sč�
 | Malá násobilka | Samostatná větev „Kouzelné formule“, násobilka 2–10 |
 | Dělení | Samostatná větev „Přeměňování“, dělení v oboru násobilky |
 | Sčítání a odčítání do 100 | Samostatná větev „Lektvary“, od jednoduchých příkladů po přechod přes desítku |
-| Styl Harry Potter | Moudrý klobouk, koleje, hůlky, pláště, předměty, kouzla, zlaťáky (vlastní názvy, bez oficiálních) |
+| Styl Harry Potter | Moudrý klobouk, koleje, hůlky, pláště, předměty, kouzla, galeony (originální názvy z knih) |
 | Vlastní účet | Profil dítěte (jméno a PIN nebo obrázkové heslo) pod rodičovským účtem, **od první verze** |
 | Progress | Mapa hradu, úrovně, hvězdičky, odznaky, statistiky |
 | Odemykání úrovní | Úroveň se odemkne po zvládnutí předchozí |
-| Body | XP (zkušenosti) a zlaťáky (měna) |
-| Nákup výbavy | Obchod na Kouzelné ulici: hůlky, hábity, mazlíčci, košťata, vybavení pokoje |
+| Body | XP (zkušenosti) a galeony (měna) |
+| Nákup výbavy | Obchod na Příčné ulici: hůlky, hábity, mazlíčci, košťata, vybavení pokoje |
 
 ## Rozhodnutí
 
@@ -66,12 +66,12 @@ Výchozí odemčení pro 3. třídu: Lektvary úrovně 1–3, Kouzelné formule 
 ## 2. Herní smyčka
 
 1. Lekce: 10 příkladů, asi 5 minut.
-2. Za každou správnou odpověď XP a zlaťáky. **Chyba nic nebere.** Příklad se na konci lekce zopakuje a ukáže se postup.
+2. Za každou správnou odpověď XP a galeony. **Chyba nic nebere.** Příklad se na konci lekce zopakuje a ukáže se postup.
 3. Konec lekce: hvězdičky (1–3), odměna a případně nová kouzelná kartička.
-4. Zlaťáky se utratí v obchodě, výbava je vidět na postavě a v pokoji.
+4. Galeony se utratí v obchodě, výbava je vidět na postavě a v pokoji.
 
 Doplňky:
-- **Denní úkol** (jedna lekce): bonusové zlaťáky a série dní. Přerušení série nic nestrhává.
+- **Denní úkol** (jedna lekce): bonusové galeony a série dní. Přerušení série nic nestrhává.
 - **Pohár kolejí**: XP přidávají body koleji, která na týdenním žebříčku soupeří s ostatními (fiktivními) kolejemi. Nikdy se nesrovnává s jinými dětmi.
 
 ## 3. Herní režimy (aby to nebyl jen dril)
@@ -89,10 +89,10 @@ Doplňky:
 ## 4. Body a obchod
 
 - **XP**: ukazují postup postavy (úroveň kouzelníka) a nedají se utratit.
-- **Zlaťáky**: 1 za správnou odpověď, +5 za dokončenou lekci, +10 za 3 hvězdičky, +10 za denní úkol.
-- Jedna lekce tedy vynese asi 15–25 zlaťáků.
+- **Galeony**: 1 za správnou odpověď, +5 za dokončenou lekci, +10 za 3 hvězdičky, +10 za denní úkol.
+- Jedna lekce tedy vynese asi 15–25 galeonů.
 
-**Obchod na Kouzelné ulici**
+**Obchod na Příčné ulici**
 
 | Kategorie | Příklady | Cena |
 |---|---|---|
@@ -126,7 +126,7 @@ Ceny jsou nastavené tak, aby se drobnost dala koupit po 1–2 lekcích a velká
 - Primárně tablet, funguje i na telefonu a počítači.
 - Velká klávesnice s čísly na obrazovce, na počítači i fyzická klávesnice.
 - Tmavé „hradní“ pozadí, zlaté akcenty, barvy podle koleje, jiskřivé animace při správné odpovědi.
-- Grafika je vlastní (SVG a emoji). Žádná oficiální loga, obrázky ani jména z knih a filmů.
+- Grafika je vlastní (SVG a emoji), bez oficiálních log a obrázků. Názvy kolejí, měny a míst jsou z knih (hra je jen pro soukromé, nekomerční použití).
 - Volitelné zvuky s možností vypnutí.
 
 ## 8. Technické řešení
@@ -135,7 +135,7 @@ Ceny jsou nastavené tak, aby se drobnost dala koupit po 1–2 lekcích a velká
 - **Backend**: Cloudflare Pages + Workers + D1 (SQLite), provoz zdarma.
 - **Datový model**:
   - `parents` – rodičovský účet
-  - `players` – dítě: jméno, hash PINu, kolej, XP, zlaťáky, vybavení
+  - `players` – dítě: jméno, hash PINu, kolej, XP, galeony, vybavení
   - `level_progress` – hráč, větev, úroveň, hvězdičky, odemčeno
   - `fact_stats` – hráč, příklad nebo typ, krabička, úspěšnost
   - `inventory` – vlastněné předměty a kartičky
@@ -144,13 +144,13 @@ Ceny jsou nastavené tak, aby se drobnost dala koupit po 1–2 lekcích a velká
 
 ## 9. Plán vývoje
 
-1. **MVP**: přihlášení (rodič + profil dítěte), výběr koleje, všechny větve a úrovně, lekce s adaptivním výběrem, zlaťáky, obchod s 22 předměty, postava s výbavou.
+1. **MVP**: přihlášení (rodič + profil dítěte), výběr koleje, všechny větve a úrovně, lekce s adaptivním výběrem, galeony, obchod s 22 předměty, postava s výbavou.
 2. **Verze 2**: všechny úrovně, souboj s bossem, kartičky, denní úkol, mapa hradu.
 3. **Verze 3**: rodičovský přehled, minihry (lektvary, famfrpál), pokoj, pohár kolejí.
 4. **Doladění podle dcery**: hraje, říká, co ji baví a co ne. Podle toho upravit obtížnost a odměny.
 
 ## 10. Stav
 
-MVP je hotové (viz README): účty, výběr koleje, všechny tři větve se všemi úrovněmi, adaptivní lekce s postupy, zlaťáky, obchod s 22 věcmi, postava s výbavou, denní bonus a série, rodičovský přehled.
+MVP je hotové (viz README): účty, výběr koleje, všechny tři větve se všemi úrovněmi, adaptivní lekce s postupy, galeony, obchod s 22 věcmi, postava s výbavou, denní bonus a série, rodičovský přehled.
 
 Další na řadě (verze 2): souboj s bossem, kouzelné kartičky, mapa hradu, minihry.

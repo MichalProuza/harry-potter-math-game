@@ -5,17 +5,17 @@ Webová hra na procvičování sčítání a odčítání do 100, malé násobil
 ## Co hra umí
 
 - **Účty:** rodič se přihlásí e-mailem a heslem (zařízení si to pamatuje), dítě pak vybere svůj profil a zadá 4místný PIN.
-- **Moudrý klobouk** vybere kolej podle tří otázek, nebo si ji dítě vybere samo.
+- **Moudrý klobouk** vybere kolej (Nebelvír, Havraspár, Zmijozel, Mrzimor) podle tří otázek, nebo si ji dítě vybere samo.
 - **Tři předměty po 8 úrovních:** Lektvary (sčítání a odčítání), Kouzelné formule (násobilka), Přeměňování (dělení).
 - **Lekce po 10 příkladech:**
   - Příklady, ve kterých dítě chybuje, chodí častěji (Leitnerovy krabičky).
   - Při chybě se ukáže postup a příklad se na konci lekce zopakuje.
   - Nápověda „Lumos“ ukáže první krok postupu.
 - **Odměny:**
-  - Zlaťáky a XP za každou lekci, za lekci bez chyby a jednou denně bonus.
+  - Galeony a XP za každou lekci, za lekci bez chyby a jednou denně bonus.
   - Série dní v řadě a hodnosti od Prvňáčka po Velkou mágyni.
 - **Odemykání úrovní:** další úroveň se otevře po třech lekcích s aspoň 8 správnými odpověďmi z 10.
-- **Obchod na Kouzelné ulici:** 22 věcí (hůlky, klobouky, pláště, šály, brýle, mazlíčci, košťata). Před koupí jde vidět, jak věc na postavě vypadá.
+- **Obchod na Příčné ulici:** 22 věcí (hůlky, klobouky, pláště, šály, brýle, mazlíčci, košťata). Před koupí jde vidět, jak věc na postavě vypadá.
 - **Rodičovská sekce** (chráněná heslem rodiče):
   - Přehled za týden a příklady, které dítěti nejdou.
   - Historie lekcí.

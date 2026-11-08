@@ -35,7 +35,7 @@ export function Shop({ go, s }: { go: Go; s: PlayerSession }) {
 
   return (
     <main class="screen">
-      <TopBar session={s} onBack={() => go({ name: 'hub' })} title="🛍️ Kouzelná ulice" />
+      <TopBar session={s} onBack={() => go({ name: 'hub' })} title="🛍️ Příčná ulice" />
       <div class="shop">
         <aside class="shop__preview">
           <Avatar house={state.house} equipped={preview} size={170} animated />
@@ -127,7 +127,7 @@ function ItemAction({
   if (missing > 0) {
     return (
       <p class="muted">
-        Cena 🪙 {item.price}. Chybí ti ještě <strong>{missing}</strong> zlaťáků – to je pár lekcí!
+        Cena 🪙 {item.price}. Chybí ti ještě <strong>{missing}</strong> galeonů – to je pár lekcí!
       </p>
     );
   }

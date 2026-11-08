@@ -11,7 +11,7 @@ import { type PlayerSession, session } from '../session';
 
 export function Sorting({ go, s }: { go: Go; s: PlayerSession }) {
   const [step, setStep] = useState(0);
-  const [score, setScore] = useState<Record<HouseId, number>>({ fenix: 0, sova: 0, drak: 0, jednorozec: 0 });
+  const [score, setScore] = useState<Record<HouseId, number>>({ nebelvir: 0, havraspar: 0, zmijozel: 0, mrzimor: 0 });
   const [chosen, setChosen] = useState<HouseId | null>(null);
   const [manual, setManual] = useState(false);
 
@@ -123,7 +123,7 @@ export function Hub({ go, s }: { go: Go; s: PlayerSession }) {
           </p>
           <div class="row">
             <button type="button" class="btn btn--gold" onClick={() => go({ name: 'shop' })}>
-              🛍️ Obchod na Kouzelné ulici
+              🛍️ Příčná ulice
             </button>
           </div>
         </div>

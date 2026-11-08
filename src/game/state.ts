@@ -1,4 +1,4 @@
-import type { HouseId } from './houses';
+import { type HouseId, toHouseId } from './houses';
 import { BRANCHES, type BranchId, LESSONS_TO_PASS, LESSON_SIZE, PASS_SCORE, getBranch } from './levels';
 import { STARTER_ITEMS, type Slot, getItem } from './shop';
 
@@ -57,6 +57,7 @@ export function normalizeState(raw: unknown): PlayerState {
   return {
     ...base,
     ...s,
+    house: toHouseId(s.house),
     progress: { ...base.progress, ...(s.progress ?? {}) },
     stats: s.stats ?? {},
     owned: Array.from(new Set([...(s.owned ?? []), ...STARTER_ITEMS])),
@@ -232,7 +233,7 @@ export function buyItem(prev: PlayerState, itemId: string): PlayerState {
   const item = getItem(itemId);
   if (!item) throw new Error('Tahle věc v obchodě není.');
   if (prev.owned.includes(itemId)) throw new Error('Tohle už máš.');
-  if (prev.coins < item.price) throw new Error('Na tohle zatím nemáš dost zlaťáků.');
+  if (prev.coins < item.price) throw new Error('Na tohle zatím nemáš dost galeonů.');
   return {
     ...prev,
     coins: prev.coins - item.price,
