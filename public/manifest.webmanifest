@@ -1,0 +1,10 @@
+{
+  "name": "Kouzelná škola počtů",
+  "short_name": "Škola počtů",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1430",
+  "theme_color": "#1a1430",
+  "lang": "cs",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
