@@ -1,5 +1,6 @@
 import { type HouseId, toHouseId } from './houses';
 import { BRANCHES, type BranchId, LESSONS_TO_PASS, LESSON_SIZE, PASS_SCORE, getBranch } from './levels';
+import { canonicalKey, parseFactKey } from './problems';
 import { STARTER_ITEMS, type Slot, getItem } from './shop';
 
 export interface LevelProgress {
@@ -16,6 +17,13 @@ export interface FactStat {
   correct: number;
   /** Čas posledního procvičení (ms). */
   last: number;
+  /**
+   * Jen u typů sčítání a odčítání: výsledky posledních pokusů bez nápovědy
+   * (`1` = správně, `0` = špatně), nejnovější na konci. Z nich se počítá krabička.
+   */
+  recent?: string;
+  /** Jen u spojů násobilky a dělení: klouzavý průměr času správné odpovědi (ms). */
+  ms?: number;
 }
 
 export interface PlayerState {
@@ -59,11 +67,30 @@ export function normalizeState(raw: unknown): PlayerState {
     ...s,
     house: toHouseId(s.house),
     progress: { ...base.progress, ...(s.progress ?? {}) },
-    stats: s.stats ?? {},
+    stats: mergeStats(s.stats ?? {}),
     owned: Array.from(new Set([...(s.owned ?? []), ...STARTER_ITEMS])),
     equipped: s.equipped ?? base.equipped,
     streak: s.streak ?? base.streak,
   };
+}
+
+/** Sloučí statistiky uložené pod starými klíči (8 · 7 a 7 · 8 zvlášť) do jednoho spoje. */
+function mergeStats(stats: Record<string, FactStat>): Record<string, FactStat> {
+  const out: Record<string, FactStat> = {};
+  for (const [key, stat] of Object.entries(stats)) {
+    const k = canonicalKey(key);
+    const other = out[k];
+    out[k] = other
+      ? {
+          ...other,
+          box: Math.min(other.box, stat.box),
+          seen: other.seen + stat.seen,
+          correct: other.correct + stat.correct,
+          last: Math.max(other.last, stat.last),
+        }
+      : stat;
+  }
+  return out;
 }
 
 export function levelProgress(state: PlayerState, branch: BranchId, n: number): LevelProgress {
@@ -117,13 +144,22 @@ export function starsFor(correct: number, total = LESSON_SIZE): number {
   return 0;
 }
 
+/** Jedna odpověď na první pokus. */
+export interface Answer {
+  /** Klíč příkladu (spoj nebo typ). */
+  key: string;
+  correct: boolean;
+  /** Čas od zobrazení příkladu po odeslání odpovědi (ms). */
+  ms?: number;
+  /** Před odpovědí si dítě rozsvítilo nápovědu. */
+  hinted?: boolean;
+}
+
 export interface LessonResult {
   branch: BranchId;
   level: number;
-  /** Klíče příkladů zodpovězených správně na první pokus. */
-  correctKeys: string[];
-  /** Klíče příkladů, u kterých byla první odpověď špatně. */
-  wrongKeys: string[];
+  /** První odpovědi na příklady lekce, v pořadí, v jakém přišly. */
+  answers: Answer[];
 }
 
 export interface LessonOutcome {
@@ -152,15 +188,56 @@ function previousDay(day: string): string {
   return dayKey(new Date(y, m - 1, d - 1));
 }
 
-/** Aktualizuje statistiku jednoho příkladu podle Leitnerova systému. */
-export function updateStat(stat: FactStat | undefined, correct: boolean, now: number): FactStat {
-  const box = stat?.box ?? 1;
-  return {
-    box: correct ? Math.min(5, stat ? box + 1 : 2) : 1,
+/** Do kolika ms musí přijít správná odpověď na spoj, aby se počítal jako zvládnutý zpaměti. */
+export const FLUENT_MS = 6000;
+/** Z kolika posledních pokusů se počítá úspěšnost u typů sčítání a odčítání. */
+export const RECENT_WINDOW = 10;
+
+/** Krabička typu příkladu podle úspěšnosti posledních pokusů. Málo pokusů krabičku omezuje shora. */
+export function boxFromRecent(recent: string): number {
+  const n = recent.length;
+  if (n === 0) return 1;
+  const rate = recent.split('1').length - 1;
+  const share = rate / n;
+  const box = share >= 0.9 ? 5 : share >= 0.8 ? 4 : share >= 0.65 ? 3 : share >= 0.5 ? 2 : 1;
+  return Math.min(box, 2 + Math.floor(n / 3));
+}
+
+/**
+ * Aktualizuje statistiku jednoho příkladu.
+ *
+ * - Spoj násobilky a dělení: Leitnerova krabička. Nahoru jde jen po rychlé
+ *   správné odpovědi bez nápovědy, po chybě se vrací na 1.
+ * - Typ sčítání a odčítání: krabička podle úspěšnosti posledních pokusů.
+ *   Správná odpověď s nápovědou se do ní nepočítá.
+ */
+export function updateStat(key: string, stat: FactStat | undefined, answer: Answer, now: number): FactStat {
+  const next: FactStat = {
+    ...stat,
+    box: stat?.box ?? 1,
     seen: (stat?.seen ?? 0) + 1,
-    correct: (stat?.correct ?? 0) + (correct ? 1 : 0),
+    correct: (stat?.correct ?? 0) + (answer.correct ? 1 : 0),
     last: now,
   };
+
+  if (!parseFactKey(key)) {
+    const counts = !answer.correct || !answer.hinted;
+    const recent = counts ? ((stat?.recent ?? '') + (answer.correct ? '1' : '0')).slice(-RECENT_WINDOW) : stat?.recent;
+    if (recent !== undefined) {
+      next.recent = recent;
+      next.box = boxFromRecent(recent);
+    }
+    return next;
+  }
+
+  if (!answer.correct) {
+    next.box = 1;
+    return next;
+  }
+  if (answer.ms !== undefined) next.ms = Math.round(stat?.ms === undefined ? answer.ms : stat.ms * 0.6 + answer.ms * 0.4);
+  const fluent = !answer.hinted && (answer.ms === undefined || answer.ms <= FLUENT_MS);
+  if (fluent) next.box = Math.min(5, next.box + 1);
+  return next;
 }
 
 /** Započítá dokončenou lekci do stavu a spočítá odměny. Původní stav nemění. */
@@ -171,14 +248,13 @@ export function applyLesson(
   now = new Date(),
 ): LessonOutcome {
   const state: PlayerState = structuredClone(prev);
-  const correct = result.correctKeys.length;
-  const total = correct + result.wrongKeys.length;
+  const correct = result.answers.filter((a) => a.correct).length;
+  const total = result.answers.length;
   const stars = starsFor(correct, total);
   const passed = correct >= PASS_SCORE;
   const ts = now.getTime();
 
-  for (const key of result.correctKeys) state.stats[key] = updateStat(state.stats[key], true, ts);
-  for (const key of result.wrongKeys) state.stats[key] = updateStat(state.stats[key], false, ts);
+  for (const a of result.answers) state.stats[a.key] = updateStat(a.key, state.stats[a.key], a, ts);
 
   const unlockedBefore = unlockedUpTo(prev, result.branch, overrides);
   const lp = levelProgress(state, result.branch, result.level);
@@ -227,6 +303,17 @@ export function applyLesson(
   };
 }
 
+/**
+ * Započítá odpovědi z nedokončené lekce jen do statistik příkladů.
+ * Odměny, série ani postup v úrovni se nemění. Původní stav nemění.
+ */
+export function applyPractice(prev: PlayerState, answers: Answer[], now = new Date()): PlayerState {
+  const state: PlayerState = structuredClone(prev);
+  const ts = now.getTime();
+  for (const a of answers) state.stats[a.key] = updateStat(a.key, state.stats[a.key], a, ts);
+  return state;
+}
+
 // ------------------------------------------------------------ obchod
 
 export function buyItem(prev: PlayerState, itemId: string): PlayerState {
@@ -251,10 +338,11 @@ export function toggleEquip(prev: PlayerState, itemId: string): PlayerState {
   return { ...prev, equipped };
 }
 
-/** Celková úspěšnost a nejslabší příklady – pro rodičovský přehled. */
+/** Nejslabší příklady – pro rodičovský přehled. */
 export function weakestKeys(state: PlayerState, limit = 8): Array<{ key: string; stat: FactStat }> {
   return Object.entries(state.stats)
-    .filter(([, s]) => s.seen >= 2 && s.box <= 2)
+    // slabé = chybuje se v něm, nebo je správně, ale pomalu (dopočítává se)
+    .filter(([, s]) => s.seen >= 2 && s.box <= 2 && (s.correct < s.seen || (s.ms ?? 0) > FLUENT_MS))
     .sort(([, a], [, b]) => a.correct / a.seen - b.correct / b.seen)
     .slice(0, limit)
     .map(([key, stat]) => ({ key, stat }));

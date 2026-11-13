@@ -1,66 +1,100 @@
-import { useCallback, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { Go } from '../app';
 import { Avatar } from '../components/Avatar';
 import { Coins, Stars } from '../components/common';
 import { Keypad } from '../components/Keypad';
 import { buildLesson } from '../game/lesson';
 import { type BranchId, LESSONS_TO_PASS, PASS_SCORE, getBranch } from '../game/levels';
-import type { Problem } from '../game/problems';
-import { type LessonOutcome, applyLesson, levelProgress } from '../game/state';
+import { type Answer, type LessonOutcome, applyLesson, applyPractice, levelProgress } from '../game/state';
+import { type QueueItem, clearLesson, loadLesson, saveLesson } from '../lessonStore';
 import { type PlayerSession, session } from '../session';
 
 const PRAISE = ['Výborně!', 'Skvělé kouzlo!', 'Přesně tak!', 'Bravo!', 'Kouzelné!', 'Paráda!', 'Jsi hvězda!'];
 
-interface QueueItem {
-  problem: Problem;
-  /** Opakování příkladu, který byl napoprvé špatně – už se nepočítá do skóre. */
-  retry: boolean;
-}
-
-export function Lesson({ go, s, branch, level }: { go: Go; s: PlayerSession; branch: BranchId; level: number }) {
+export function Lesson({
+  go,
+  s,
+  branch,
+  level,
+  setBack,
+}: {
+  go: Go;
+  s: PlayerSession;
+  branch: BranchId;
+  level: number;
+  /** Zaregistruje, co má udělat tlačítko Zpět v prohlížeči. */
+  setBack: (handler: (() => void) | null) => void;
+}) {
   const def = getBranch(branch);
   const levelDef = def.levels[level - 1];
   // Průběh lekce držíme v refu, aby časovač po správné odpovědi viděl aktuální data.
   const run = useRef<{
     startedAt: number;
     queue: QueueItem[];
-    correct: string[];
-    wrong: string[];
+    /** První odpovědi na příklady lekce (opakování na konci se nepočítá). */
+    answers: Answer[];
     wrongDisplays: string[];
+    /** Kdy se aktuální příklad objevil – pro měření rychlosti odpovědi. */
+    shownAt: number;
     finished: boolean;
+    /** Kde pokračovat po obnovení stránky. */
+    resume: { index: number; secondTry: boolean };
   } | null>(null);
   if (!run.current) {
+    const saved = loadLesson(s.id);
+    const resumed = saved && saved.branch === branch && saved.level === level ? saved : null;
     run.current = {
-      startedAt: Date.now(),
-      queue: buildLesson(s.state, branch, level).map((problem) => ({ problem, retry: false })),
-      correct: [],
-      wrong: [],
-      wrongDisplays: [],
+      startedAt: resumed?.startedAt ?? Date.now(),
+      queue: resumed?.queue ?? buildLesson(s.state, branch, level).map((problem) => ({ problem, retry: false })),
+      answers: resumed?.answers ?? [],
+      wrongDisplays: resumed?.wrongDisplays ?? [],
+      shownAt: Date.now(),
       finished: false,
+      resume: { index: resumed?.index ?? 0, secondTry: resumed?.secondTry ?? false },
     };
   }
   const r = run.current;
   const firstCount = r.queue.filter((q) => !q.retry).length;
 
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(r.resume.index);
   const [input, setInput] = useState('');
   const [feedback, setFeedback] = useState<null | { ok: boolean; text: string }>(null);
   const [hint, setHint] = useState(false);
+  /** Po první chybě dostane dítě ještě jeden pokus s nápovědou. */
+  const [secondTry, setSecondTry] = useState(r.resume.secondTry);
 
   const current = r.queue[index];
-  const answeredFirst = r.correct.length + r.wrong.length;
+  const answeredFirst = r.answers.length;
+  /** Pořadové číslo aktuálního příkladu (při druhém pokusu už je první odpověď započítaná). */
+  const position = Math.min(answeredFirst + (secondTry ? 0 : 1), firstCount);
 
-  const next = useCallback(() => {
+  useEffect(() => {
+    r.shownAt = Date.now();
+  }, [r, index]);
+
+  /** Uloží rozehranou lekci do prohlížeče. */
+  const save = useCallback(
+    (at: number, second: boolean) => {
+      if (r.finished) return;
+      saveLesson(s.id, {
+        branch,
+        level,
+        startedAt: r.startedAt,
+        queue: r.queue,
+        answers: r.answers,
+        wrongDisplays: r.wrongDisplays,
+        index: at,
+        secondTry: second,
+      });
+    },
+    [r, s.id, branch, level],
+  );
+
+  const finish = useCallback(() => {
     if (r.finished) return;
-    setFeedback(null);
-    setHint(false);
-    setInput('');
-    if (index + 1 < r.queue.length) {
-      setIndex(index + 1);
-      return;
-    }
     r.finished = true;
-    const outcome = applyLesson(s.state, { branch, level, correctKeys: r.correct, wrongKeys: r.wrong }, s.overrides);
+    clearLesson(s.id);
+    const outcome = applyLesson(s.state, { branch, level, answers: r.answers }, s.overrides);
     session.commit(outcome.state, {
       branch,
       level,
@@ -70,7 +104,25 @@ export function Lesson({ go, s, branch, level }: { go: Go; s: PlayerSession; bra
       mistakes: r.wrongDisplays,
     });
     go({ name: 'results', branch, level, outcome });
-  }, [r, index, s.state, s.overrides, branch, level, go]);
+  }, [r, s.id, s.state, s.overrides, branch, level, go]);
+
+  const next = useCallback(() => {
+    if (r.finished) return;
+    setFeedback(null);
+    setHint(false);
+    setSecondTry(false);
+    setInput('');
+    if (index + 1 < r.queue.length) setIndex(index + 1);
+    else finish();
+  }, [r, index, finish]);
+
+  // Lekce obnovená těsně po poslední odpovědi už nemá co ukázat – rovnou se vyhodnotí.
+  useEffect(() => {
+    if (index >= r.queue.length) finish();
+    else save(index, secondTry);
+    // jen při startu lekce; další ukládání řídí odpovědi
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submit = useCallback(() => {
     if (feedback) {
@@ -80,20 +132,28 @@ export function Lesson({ go, s, branch, level }: { go: Go; s: PlayerSession; bra
     }
     if (input === '' || !current) return;
     const ok = Number(input) === current.problem.answer;
+    if (!secondTry && !current.retry) {
+      r.answers.push({ key: current.problem.key, correct: ok, ms: Date.now() - r.shownAt, hinted: hint });
+    }
     if (ok) {
-      if (!current.retry) r.correct.push(current.problem.key);
-      setFeedback({ ok: true, text: PRAISE[Math.floor(Math.random() * PRAISE.length)] });
+      const text = secondTry ? 'Teď to vyšlo!' : PRAISE[Math.floor(Math.random() * PRAISE.length)];
+      setFeedback({ ok: true, text });
+      save(index + 1, false);
       setTimeout(next, 900);
-    } else {
+    } else if (!secondTry) {
       if (!current.retry) {
-        r.wrong.push(current.problem.key);
         r.wrongDisplays.push(current.problem.display.replace('?', String(current.problem.answer)));
         // příklad se na konci lekce zopakuje
         r.queue.push({ problem: current.problem, retry: true });
       }
-      setFeedback({ ok: false, text: 'Skoro! Podívej se, jak na to:' });
+      setSecondTry(true);
+      setInput('');
+      save(index, true);
+    } else {
+      setFeedback({ ok: false, text: 'Nevadí! Podívej se, jak na to:' });
+      save(index + 1, false);
     }
-  }, [r, feedback, input, current, next]);
+  }, [r, feedback, input, current, next, secondTry, hint, index, save]);
 
   const onDigit = useCallback((d: string) => {
     if (feedback) return;
@@ -101,12 +161,20 @@ export function Lesson({ go, s, branch, level }: { go: Go; s: PlayerSession; bra
   }, [feedback]);
   const onBackspace = useCallback(() => !feedback && setInput((v) => v.slice(0, -1)), [feedback]);
 
-  function quit() {
-    if (answeredFirst === 0 || confirm('Opravdu chceš lekci ukončit? Body z ní se nezapočítají.')) {
-      r.finished = true;
-      go({ name: 'branch', branch });
-    }
-  }
+  const quit = useCallback(() => {
+    if (r.finished) return;
+    if (r.answers.length > 0 && !confirm('Opravdu chceš lekci ukončit? Galeony z ní nedostaneš.')) return;
+    r.finished = true;
+    clearLesson(s.id);
+    // co už dítě spočítalo, se do statistik příkladů započítá i bez dokončení lekce
+    if (r.answers.length > 0) session.commit(applyPractice(s.state, r.answers));
+    go({ name: 'branch', branch });
+  }, [r, s.id, s.state, branch, go]);
+
+  useEffect(() => {
+    setBack(quit);
+    return () => setBack(null);
+  }, [setBack, quit]);
 
   if (!current) return null;
   const [left, right] = current.problem.display.split('?');
@@ -118,11 +186,11 @@ export function Lesson({ go, s, branch, level }: { go: Go; s: PlayerSession; bra
         <button type="button" class="btn-icon" onClick={quit} aria-label="Ukončit lekci">
           ✕
         </button>
-        <div class="progress" aria-label={`Příklad ${Math.min(answeredFirst + 1, firstCount)} z ${firstCount}`}>
+        <div class="progress" aria-label={`Příklad ${position} z ${firstCount}`}>
           <div class="progress__fill" style={{ width: `${(answeredFirst / firstCount) * 100}%` }} />
         </div>
         <span class="lesson__count">
-          {current.retry ? '🔁' : `${Math.min(answeredFirst + 1, firstCount)}/${firstCount}`}
+          {current.retry ? '🔁' : `${position}/${firstCount}`}
         </span>
       </header>
 
@@ -162,7 +230,13 @@ export function Lesson({ go, s, branch, level }: { go: Go; s: PlayerSession; bra
 
       {!feedback && (
         <div class="hint-row">
-          {hint ? (
+          {secondTry ? (
+            <p class="hint hint--retry" aria-live="polite">
+              <strong>To není ono. Zkus to ještě jednou:</strong>
+              <br />
+              💡 {current.problem.hint[0]}
+            </p>
+          ) : hint ? (
             <p class="hint">💡 {current.problem.hint[0]}</p>
           ) : (
             <button type="button" class="btn btn--ghost" onClick={() => setHint(true)}>

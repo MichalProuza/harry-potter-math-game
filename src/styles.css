@@ -761,6 +761,11 @@ h2 {
 .hint--full {
   text-align: left;
 }
+.hint--retry {
+  text-align: center;
+  border-color: #ff9b7a88;
+  background: #ff9b7a1f;
+}
 .hint--full ol {
   margin: 6px 0 12px;
   padding-left: 22px;

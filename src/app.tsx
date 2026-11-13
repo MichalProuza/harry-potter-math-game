@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'preact/hooks';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { type PlayerSummary, tokens } from './api';
 import type { BranchId } from './game/levels';
 import type { LessonOutcome } from './game/state';
@@ -7,6 +7,7 @@ import { BranchMap, Hub, Sorting } from './screens/hub';
 import { Lesson, Results } from './screens/lesson';
 import { ParentZone } from './screens/parent';
 import { Shop } from './screens/shop';
+import { loadLesson } from './lessonStore';
 import { session, useSession } from './session';
 
 export type Screen =
@@ -27,6 +28,23 @@ export type Go = (s: Screen) => void;
 /** Obrazovky, na které se nesmí bez přihlášené hráčky. */
 const PLAYER_SCREENS = new Set(['sorting', 'hub', 'branch', 'lesson', 'results', 'shop']);
 
+/** Kam vede tlačítko Zpět. `null` = hra nemá kam jít a prohlížeč může stránku opustit. */
+function screenAbove(s: Screen): Screen | null {
+  switch (s.name) {
+    case 'branch':
+    case 'shop':
+      return { name: 'hub' };
+    case 'lesson':
+    case 'results':
+      return { name: 'branch', branch: s.branch };
+    case 'pin':
+    case 'parent':
+      return { name: 'profiles' };
+    default:
+      return null;
+  }
+}
+
 export function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'boot' });
   // každá navigace dostane nový klíč, aby se např. „Další lekce“ spustila nanovo
@@ -34,18 +52,58 @@ export function App() {
   const [bootError, setBootError] = useState<string | null>(null);
   const s = useSession();
 
-  const go = useCallback<Go>((next) => {
-    setScreen(next);
-    setNav((n) => n + 1);
-    window.scrollTo(0, 0);
+  const screenRef = useRef(screen);
+  /** Vlastní obsluha tlačítka Zpět (lekce se před odchodem ptá). */
+  const backHandler = useRef<(() => void) | null>(null);
+  /** V historii prohlížeče je záznam navíc, který zachytí tlačítko Zpět. */
+  const guarded = useRef(false);
+
+  const guard = useCallback(() => {
+    if (guarded.current) return;
+    history.pushState({ ksp: true }, '');
+    guarded.current = true;
   }, []);
+
+  const go = useCallback<Go>(
+    (next) => {
+      screenRef.current = next;
+      setScreen(next);
+      setNav((n) => n + 1);
+      window.scrollTo(0, 0);
+      if (screenAbove(next)) guard();
+    },
+    [guard],
+  );
+
+  const setBack = useCallback((handler: (() => void) | null) => {
+    backHandler.current = handler;
+  }, []);
+
+  // Tlačítko Zpět (hlavně na tabletu a telefonu) vede o obrazovku výš, ne pryč ze hry.
+  useEffect(() => {
+    const onPop = () => {
+      guarded.current = false;
+      const up = screenAbove(screenRef.current);
+      if (!up) return;
+      guard();
+      if (backHandler.current) backHandler.current();
+      else go(up);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [go, guard]);
 
   useEffect(() => {
     (async () => {
       try {
         if (tokens.player) {
           const loaded = await session.load();
-          if (loaded) return go(loaded.state.house ? { name: 'hub' } : { name: 'sorting' });
+          if (loaded) {
+            // rozehraná lekce (např. po obnovení stránky) pokračuje tam, kde skončila
+            const saved = loaded.state.house ? loadLesson(loaded.id) : null;
+            if (saved) return go({ name: 'lesson', branch: saved.branch, level: saved.level });
+            return go(loaded.state.house ? { name: 'hub' } : { name: 'sorting' });
+          }
         }
         go(tokens.parent ? { name: 'profiles' } : { name: 'parentAuth' });
       } catch (e) {
@@ -88,7 +146,7 @@ export function App() {
     case 'branch':
       return <BranchMap key={nav} go={go} s={s!} branch={screen.branch} />;
     case 'lesson':
-      return <Lesson key={nav} go={go} s={s!} branch={screen.branch} level={screen.level} />;
+      return <Lesson key={nav} go={go} s={s!} branch={screen.branch} level={screen.level} setBack={setBack} />;
     case 'results':
       return <Results key={nav} go={go} s={s!} branch={screen.branch} level={screen.level} outcome={screen.outcome} />;
     case 'shop':
