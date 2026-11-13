@@ -25,6 +25,10 @@ Webová hra na procvičování sčítání a odčítání do 100, malé násobil
   - Ruční odemykání úrovní a změna PINu.
 - **Funguje na telefonu, tabletu i notebooku.** Na notebooku jde psát i z klávesnice (číslice, Enter, Backspace).
 - **Ukládání:** stav se ukládá do prohlížeče i na server. Když vypadne internet, lekce se odešle později.
+- **Rozehraná lekce se neztratí:**
+  - Po obnovení stránky nebo zavření prohlížeče pokračuje tam, kde skončila (do 30 minut).
+  - Tlačítko Zpět v prohlížeči nebo na tabletu vede o obrazovku výš. V lekci se nejdřív zeptá.
+  - Když dítě lekci ukončí dřív, galeony nedostane, ale spočítané příklady se do statistik započítají.
 
 ## Technika
 

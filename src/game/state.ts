@@ -303,6 +303,17 @@ export function applyLesson(
   };
 }
 
+/**
+ * Započítá odpovědi z nedokončené lekce jen do statistik příkladů.
+ * Odměny, série ani postup v úrovni se nemění. Původní stav nemění.
+ */
+export function applyPractice(prev: PlayerState, answers: Answer[], now = new Date()): PlayerState {
+  const state: PlayerState = structuredClone(prev);
+  const ts = now.getTime();
+  for (const a of answers) state.stats[a.key] = updateStat(a.key, state.stats[a.key], a, ts);
+  return state;
+}
+
 // ------------------------------------------------------------ obchod
 
 export function buyItem(prev: PlayerState, itemId: string): PlayerState {

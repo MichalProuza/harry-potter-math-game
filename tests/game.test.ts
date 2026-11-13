@@ -3,7 +3,7 @@ import { buildLesson, weightFor } from '../src/game/lesson';
 import { BRANCHES, LESSONS_TO_PASS } from '../src/game/levels';
 import { ADD_SUB_GENERATORS, factKeys, makeProblem } from '../src/game/problems';
 import { seededRng } from '../src/game/random';
-import { type Answer, FLUENT_MS, applyLesson, buyItem, newState, normalizeState, unlockedUpTo, updateStat, weakestKeys } from '../src/game/state';
+import { type Answer, FLUENT_MS, applyLesson, applyPractice, buyItem, newState, normalizeState, unlockedUpTo, updateStat, weakestKeys } from '../src/game/state';
 
 /** Spočítá zadání `display`, kde `?` nahradí odpověď, a ověří rovnost. */
 function holds(display: string, answer: number): boolean {
@@ -189,6 +189,18 @@ describe('postup a odměny', () => {
     expect(b.dailyBonus).toBe(false);
     const c = applyLesson(b.state, r, {}, day2);
     expect(c.streak).toBe(2);
+  });
+
+  it('nedokončená lekce se započítá jen do statistik příkladů', () => {
+    const before = newState();
+    const after = applyPractice(before, [
+      { key: 'm6x7', correct: true, ms: 2000 },
+      { key: 'm6x8', correct: false, ms: 2000 },
+    ]);
+    expect(after.stats.m6x7.box).toBe(2);
+    expect(after.stats.m6x8.box).toBe(1);
+    expect(after).toMatchObject({ coins: 0, xp: 0, lessonsTotal: 0, streak: before.streak, progress: before.progress });
+    expect(before.stats).toEqual({});
   });
 
   it('rodič může odemknout úroveň ručně', () => {
