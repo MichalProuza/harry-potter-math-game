@@ -214,25 +214,44 @@ export const ADD_SUB_GENERATORS: Record<string, Gen> = {
 
 const FACT_KEY = /^(m|mm|d)(\d+)x(\d+)$/;
 
+export type FactKind = 'm' | 'mm' | 'd';
+
+/** Rozebere klíč spoje násobilky nebo dělení. U typů sčítání a odčítání vrací null. */
+export function parseFactKey(key: string): { kind: FactKind; a: number; b: number } | null {
+  const m = FACT_KEY.exec(key);
+  return m ? { kind: m[1] as FactKind, a: Number(m[2]), b: Number(m[3]) } : null;
+}
+
+/**
+ * Sjednotí klíč spoje. 7 · 8 a 8 · 7 je jeden spoj, proto má násobení vždy
+ * menší činitel první (`m7x8`). U dělení a chybějícího činitele na pořadí záleží.
+ */
+export function canonicalKey(key: string): string {
+  const f = parseFactKey(key);
+  if (!f || f.kind !== 'm' || f.a <= f.b) return key;
+  return `m${f.b}x${f.a}`;
+}
+
+/** Spoje s 1 a 10 jsou snadné, v lekcích se objevují méně často. */
+export function isTrivialFact(key: string): boolean {
+  const f = parseFactKey(key);
+  return !!f && (f.a === 1 || f.a === 10 || f.b === 1 || f.b === 10);
+}
+
 /** Klíče spojů: `m7x8` = 7 · 8, `mm7x8` = 7 · ? = 56, `d7x8` = 56 : 7. */
-export function factKeys(prefix: 'm' | 'mm' | 'd', tables: number[]): string[] {
-  return tables.flatMap((a) => Array.from({ length: 10 }, (_, i) => `${prefix}${a}x${i + 1}`));
+export function factKeys(prefix: FactKind, tables: number[]): string[] {
+  const keys = tables.flatMap((a) => Array.from({ length: 10 }, (_, i) => canonicalKey(`${prefix}${a}x${i + 1}`)));
+  return Array.from(new Set(keys));
 }
 
 function factProblem(key: string, rng: Rng): Problem {
-  const m = FACT_KEY.exec(key);
-  if (!m) throw new Error(`Neznámý klíč příkladu: ${key}`);
-  const [, kind, as, bs] = m;
-  const a = Number(as);
-  const b = Number(bs);
+  const f = parseFactKey(key);
+  if (!f) throw new Error(`Neznámý klíč příkladu: ${key}`);
+  const { kind, a, b } = f;
   if (kind === 'm') {
-    const swap = rng() < 0.5;
-    return {
-      key,
-      display: swap ? `${b} ${TIMES} ${a} = ?` : `${a} ${TIMES} ${b} = ?`,
-      answer: a * b,
-      hint: mulHint(a, b),
-    };
+    // pořadí činitelů se střídá, postup odpovídá zobrazenému zadání
+    const [x, y] = rng() < 0.5 ? [b, a] : [a, b];
+    return { key, display: `${x} ${TIMES} ${y} = ?`, answer: a * b, hint: mulHint(x, y) };
   }
   if (kind === 'mm') {
     return { key, display: `${a} ${TIMES} ? = ${a * b}`, answer: b, hint: tableHint(a, b) };

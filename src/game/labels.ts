@@ -1,3 +1,5 @@
+import { parseFactKey } from './problems';
+
 const TYPE_LABELS: Record<string, string> = {
   add20: 'sčítání do 20',
   sub20: 'odčítání do 20',
@@ -19,11 +21,10 @@ const TYPE_LABELS: Record<string, string> = {
 /** Čitelný popis klíče příkladu pro rodičovský přehled. */
 export function keyLabel(key: string): string {
   if (TYPE_LABELS[key]) return TYPE_LABELS[key];
-  const m = /^(m|mm|d)(\d+)x(\d+)$/.exec(key);
-  if (!m) return key;
-  const a = Number(m[2]);
-  const b = Number(m[3]);
-  if (m[1] === 'm') return `${a} · ${b} = ${a * b}`;
-  if (m[1] === 'mm') return `${a} · ? = ${a * b}`;
+  const f = parseFactKey(key);
+  if (!f) return key;
+  const { kind, a, b } = f;
+  if (kind === 'm') return `${a} · ${b} = ${a * b}`;
+  if (kind === 'mm') return `${a} · ? = ${a * b}`;
   return `${a * b} : ${a} = ${b}`;
 }

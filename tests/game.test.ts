@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildLesson } from '../src/game/lesson';
+import { buildLesson, weightFor } from '../src/game/lesson';
 import { BRANCHES, LESSONS_TO_PASS } from '../src/game/levels';
-import { ADD_SUB_GENERATORS, makeProblem } from '../src/game/problems';
+import { ADD_SUB_GENERATORS, factKeys, makeProblem } from '../src/game/problems';
 import { seededRng } from '../src/game/random';
-import { applyLesson, buyItem, newState, normalizeState, unlockedUpTo } from '../src/game/state';
+import { type Answer, FLUENT_MS, applyLesson, buyItem, newState, normalizeState, unlockedUpTo, updateStat, weakestKeys } from '../src/game/state';
 
 /** Spočítá zadání `display`, kde `?` nahradí odpověď, a ověří rovnost. */
 function holds(display: string, answer: number): boolean {
@@ -63,23 +63,108 @@ describe('lekce', () => {
 
   it('slabé příklady chodí častěji', () => {
     const state = newState();
-    for (let b = 1; b <= 10; b++) state.stats[`m7x${b}`] = { box: 5, seen: 5, correct: 5, last: 0 };
-    state.stats['m7x8'] = { box: 1, seen: 5, correct: 1, last: 0 };
+    const now = Date.now();
+    for (const k of factKeys('m', [7])) state.stats[k] = { box: 5, seen: 5, correct: 5, last: now };
+    state.stats['m7x8'] = { box: 1, seen: 5, correct: 1, last: now };
     let hits = 0;
     const rng = seededRng(7);
-    for (let i = 0; i < 200; i++) if (buildLesson(state, 'formule', 5, rng, 1)[0].key === 'm7x8') hits++;
+    for (let i = 0; i < 200; i++) if (buildLesson(state, 'formule', 5, rng, 1, now)[0].key === 'm7x8') hits++;
     expect(hits).toBeGreaterThan(50); // bez váhy by to bylo kolem 20
+  });
+
+  it('7 · 8 a 8 · 7 je jeden spoj', () => {
+    expect(factKeys('m', [8])).toContain('m7x8');
+    expect(factKeys('m', [8])).not.toContain('m8x7');
+    expect(new Set(factKeys('m', [8, 9])).size).toBe(factKeys('m', [8, 9]).length);
+    // dělení se neslučuje: 56 : 7 a 56 : 8 jsou různé spoje
+    expect(factKeys('d', [8])).toContain('d8x7');
+    const merged = normalizeState({
+      stats: {
+        m8x7: { box: 1, seen: 3, correct: 1, last: 10 },
+        m7x8: { box: 4, seen: 4, correct: 4, last: 20 },
+      },
+    }).stats;
+    expect(merged.m8x7).toBeUndefined();
+    expect(merged.m7x8).toMatchObject({ box: 1, seen: 7, correct: 5, last: 20 });
+  });
+
+  it('dlouho neprocvičený příklad má větší váhu', () => {
+    const state = newState();
+    const now = 100 * 86_400_000;
+    state.stats.m6x7 = { box: 4, seen: 4, correct: 4, last: now };
+    state.stats.m6x8 = { box: 4, seen: 4, correct: 4, last: now - 30 * 86_400_000 };
+    expect(weightFor(state, 'm6x8', now)).toBeCloseTo(3 * weightFor(state, 'm6x7', now));
+  });
+
+  it('spoje s 1 a 10 mají menší váhu', () => {
+    const state = newState();
+    expect(weightFor(state, 'm1x7', 0)).toBeLessThan(weightFor(state, 'm6x7', 0) / 2);
+    expect(weightFor(state, 'd10x4', 0)).toBeLessThan(weightFor(state, 'd6x4', 0) / 2);
+  });
+});
+
+describe('zvládnutí příkladů', () => {
+  const fast: Answer = { key: 'm6x7', correct: true, ms: 2500 };
+
+  it('spoj postupuje jen po rychlé odpovědi bez nápovědy', () => {
+    let stat = updateStat('m6x7', undefined, fast, 1);
+    expect(stat.box).toBe(2);
+    stat = updateStat('m6x7', stat, { ...fast, ms: FLUENT_MS + 1 }, 2);
+    expect(stat.box).toBe(2);
+    stat = updateStat('m6x7', stat, { ...fast, hinted: true }, 3);
+    expect(stat.box).toBe(2);
+    expect(stat).toMatchObject({ seen: 3, correct: 3 });
+    stat = updateStat('m6x7', stat, fast, 4);
+    expect(stat.box).toBe(3);
+    stat = updateStat('m6x7', stat, { ...fast, correct: false }, 5);
+    expect(stat.box).toBe(1);
+  });
+
+  it('typ sčítání: krabička podle posledních pokusů, ne podle jedné odpovědi', () => {
+    const right: Answer = { key: 'add21c', correct: true };
+    let stat = updateStat('add21c', undefined, right, 1);
+    // čtyři správné odpovědi v jedné lekci ještě neznamenají „umím“
+    for (let i = 0; i < 3; i++) stat = updateStat('add21c', stat, right, 1);
+    expect(stat.box).toBe(3);
+    for (let i = 0; i < 6; i++) stat = updateStat('add21c', stat, right, 1);
+    expect(stat.box).toBe(5);
+    // jedna chyba z deseti krabičku nevynuluje
+    stat = updateStat('add21c', stat, { ...right, correct: false }, 1);
+    expect(stat.box).toBe(5);
+    stat = updateStat('add21c', stat, { ...right, correct: false }, 1);
+    expect(stat.box).toBe(4);
+    // odpověď s nápovědou se do úspěšnosti nepočítá
+    const before = stat.recent;
+    stat = updateStat('add21c', stat, { ...right, hinted: true }, 1);
+    expect(stat.recent).toBe(before);
+    expect(stat.seen).toBe(13);
+  });
+
+  it('rodič vidí chyby a pomalé spoje, ne správné odpovědi z prvních pokusů', () => {
+    let state = newState();
+    const answers: Answer[] = [
+      { key: 'add20', correct: true },
+      { key: 'add20', correct: true },
+      { key: 'm6x7', correct: true, ms: 15_000 },
+      { key: 'm6x8', correct: false, ms: 3000 },
+    ];
+    state = applyLesson(state, { branch: 'formule', level: 4, answers }).state;
+    state = applyLesson(state, { branch: 'formule', level: 4, answers }).state;
+    expect(weakestKeys(state).map((w) => w.key).sort()).toEqual(['m6x7', 'm6x8']);
   });
 });
 
 describe('postup a odměny', () => {
-  const ok = (n: number) => Array.from({ length: n }, (_, i) => `k${i}`);
+  const result = (right: number, wrong: number): Answer[] => [
+    ...Array.from({ length: right }, (_, i) => ({ key: `k${i}`, correct: true })),
+    ...Array.from({ length: wrong }, (_, i) => ({ key: `w${i}`, correct: false })),
+  ];
 
   it('úroveň se odemkne po třech úspěšných lekcích', () => {
     let state = newState();
     expect(unlockedUpTo(state, 'premenovani')).toBe(1);
     for (let i = 0; i < LESSONS_TO_PASS; i++) {
-      const out = applyLesson(state, { branch: 'premenovani', level: 1, correctKeys: ok(9), wrongKeys: ['x'] });
+      const out = applyLesson(state, { branch: 'premenovani', level: 1, answers: result(9, 1) });
       state = out.state;
       expect(out.newlyUnlocked).toBe(i === LESSONS_TO_PASS - 1 ? 2 : null);
     }
@@ -87,7 +172,7 @@ describe('postup a odměny', () => {
   });
 
   it('neúspěšná lekce nic nebere a nepočítá se do odemčení', () => {
-    const out = applyLesson(newState(), { branch: 'lektvary', level: 1, correctKeys: ok(4), wrongKeys: ok(6) });
+    const out = applyLesson(newState(), { branch: 'lektvary', level: 1, answers: result(4, 6) });
     expect(out.passed).toBe(false);
     expect(out.coins).toBeGreaterThan(0);
     expect(out.state.progress.lektvary[1].passed).toBe(0);
@@ -96,7 +181,7 @@ describe('postup a odměny', () => {
   it('denní bonus a série dní', () => {
     const day1 = new Date(2026, 10, 8, 17);
     const day2 = new Date(2026, 10, 9, 17);
-    const r = { branch: 'lektvary' as const, level: 1, correctKeys: ok(10), wrongKeys: [] };
+    const r = { branch: 'lektvary' as const, level: 1, answers: result(10, 0) };
     const a = applyLesson(newState(), r, {}, day1);
     expect(a.dailyBonus).toBe(true);
     expect(a.coins).toBe(10 + 5 + 10 + 10);

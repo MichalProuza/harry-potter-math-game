@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { Go } from '../app';
 import { Avatar } from '../components/Avatar';
 import { Coins, Stars } from '../components/common';
@@ -6,7 +6,7 @@ import { Keypad } from '../components/Keypad';
 import { buildLesson } from '../game/lesson';
 import { type BranchId, LESSONS_TO_PASS, PASS_SCORE, getBranch } from '../game/levels';
 import type { Problem } from '../game/problems';
-import { type LessonOutcome, applyLesson, levelProgress } from '../game/state';
+import { type Answer, type LessonOutcome, applyLesson, levelProgress } from '../game/state';
 import { type PlayerSession, session } from '../session';
 
 const PRAISE = ['Výborně!', 'Skvělé kouzlo!', 'Přesně tak!', 'Bravo!', 'Kouzelné!', 'Paráda!', 'Jsi hvězda!'];
@@ -24,18 +24,20 @@ export function Lesson({ go, s, branch, level }: { go: Go; s: PlayerSession; bra
   const run = useRef<{
     startedAt: number;
     queue: QueueItem[];
-    correct: string[];
-    wrong: string[];
+    /** První odpovědi na příklady lekce (opakování na konci se nepočítá). */
+    answers: Answer[];
     wrongDisplays: string[];
+    /** Kdy se aktuální příklad objevil – pro měření rychlosti odpovědi. */
+    shownAt: number;
     finished: boolean;
   } | null>(null);
   if (!run.current) {
     run.current = {
       startedAt: Date.now(),
       queue: buildLesson(s.state, branch, level).map((problem) => ({ problem, retry: false })),
-      correct: [],
-      wrong: [],
+      answers: [],
       wrongDisplays: [],
+      shownAt: Date.now(),
       finished: false,
     };
   }
@@ -46,21 +48,30 @@ export function Lesson({ go, s, branch, level }: { go: Go; s: PlayerSession; bra
   const [input, setInput] = useState('');
   const [feedback, setFeedback] = useState<null | { ok: boolean; text: string }>(null);
   const [hint, setHint] = useState(false);
+  /** Po první chybě dostane dítě ještě jeden pokus s nápovědou. */
+  const [secondTry, setSecondTry] = useState(false);
 
   const current = r.queue[index];
-  const answeredFirst = r.correct.length + r.wrong.length;
+  const answeredFirst = r.answers.length;
+  /** Pořadové číslo aktuálního příkladu (při druhém pokusu už je první odpověď započítaná). */
+  const position = Math.min(answeredFirst + (secondTry ? 0 : 1), firstCount);
+
+  useEffect(() => {
+    r.shownAt = Date.now();
+  }, [r, index]);
 
   const next = useCallback(() => {
     if (r.finished) return;
     setFeedback(null);
     setHint(false);
+    setSecondTry(false);
     setInput('');
     if (index + 1 < r.queue.length) {
       setIndex(index + 1);
       return;
     }
     r.finished = true;
-    const outcome = applyLesson(s.state, { branch, level, correctKeys: r.correct, wrongKeys: r.wrong }, s.overrides);
+    const outcome = applyLesson(s.state, { branch, level, answers: r.answers }, s.overrides);
     session.commit(outcome.state, {
       branch,
       level,
@@ -80,20 +91,25 @@ export function Lesson({ go, s, branch, level }: { go: Go; s: PlayerSession; bra
     }
     if (input === '' || !current) return;
     const ok = Number(input) === current.problem.answer;
+    if (!secondTry && !current.retry) {
+      r.answers.push({ key: current.problem.key, correct: ok, ms: Date.now() - r.shownAt, hinted: hint });
+    }
     if (ok) {
-      if (!current.retry) r.correct.push(current.problem.key);
-      setFeedback({ ok: true, text: PRAISE[Math.floor(Math.random() * PRAISE.length)] });
+      const text = secondTry ? 'Teď to vyšlo!' : PRAISE[Math.floor(Math.random() * PRAISE.length)];
+      setFeedback({ ok: true, text });
       setTimeout(next, 900);
-    } else {
+    } else if (!secondTry) {
       if (!current.retry) {
-        r.wrong.push(current.problem.key);
         r.wrongDisplays.push(current.problem.display.replace('?', String(current.problem.answer)));
         // příklad se na konci lekce zopakuje
         r.queue.push({ problem: current.problem, retry: true });
       }
-      setFeedback({ ok: false, text: 'Skoro! Podívej se, jak na to:' });
+      setSecondTry(true);
+      setInput('');
+    } else {
+      setFeedback({ ok: false, text: 'Nevadí! Podívej se, jak na to:' });
     }
-  }, [r, feedback, input, current, next]);
+  }, [r, feedback, input, current, next, secondTry, hint]);
 
   const onDigit = useCallback((d: string) => {
     if (feedback) return;
@@ -118,11 +134,11 @@ export function Lesson({ go, s, branch, level }: { go: Go; s: PlayerSession; bra
         <button type="button" class="btn-icon" onClick={quit} aria-label="Ukončit lekci">
           ✕
         </button>
-        <div class="progress" aria-label={`Příklad ${Math.min(answeredFirst + 1, firstCount)} z ${firstCount}`}>
+        <div class="progress" aria-label={`Příklad ${position} z ${firstCount}`}>
           <div class="progress__fill" style={{ width: `${(answeredFirst / firstCount) * 100}%` }} />
         </div>
         <span class="lesson__count">
-          {current.retry ? '🔁' : `${Math.min(answeredFirst + 1, firstCount)}/${firstCount}`}
+          {current.retry ? '🔁' : `${position}/${firstCount}`}
         </span>
       </header>
 
@@ -162,7 +178,13 @@ export function Lesson({ go, s, branch, level }: { go: Go; s: PlayerSession; bra
 
       {!feedback && (
         <div class="hint-row">
-          {hint ? (
+          {secondTry ? (
+            <p class="hint hint--retry" aria-live="polite">
+              <strong>To není ono. Zkus to ještě jednou:</strong>
+              <br />
+              💡 {current.problem.hint[0]}
+            </p>
+          ) : hint ? (
             <p class="hint">💡 {current.problem.hint[0]}</p>
           ) : (
             <button type="button" class="btn btn--ghost" onClick={() => setHint(true)}>

@@ -108,10 +108,10 @@ Ceny jsou nastavené tak, aby se drobnost dala koupit po 1–2 lekcích a velká
 
 ## 5. Adaptivní učení
 
-- **Násobilka** má jen 100 příkladů, proto se sleduje **každý příklad zvlášť** (Leitnerovy krabičky 1–5). Chybné příklady se vracejí častěji.
-- **Sčítání a odčítání** se generuje náhodně podle pravidla úrovně. Sleduje se úspěšnost **podle typu** (např. „odčítání s přechodem“), ne podle jednotlivých příkladů.
+- **Násobilka** má jen 100 příkladů, proto se sleduje **každý příklad zvlášť** (Leitnerovy krabičky 1–5). Chybné příklady se vracejí častěji. Spoj postupuje do další krabičky jen po rychlé správné odpovědi bez nápovědy. Dlouho neprocvičené spoje se vracejí častěji.
+- **Sčítání a odčítání** se generuje náhodně podle pravidla úrovně. Sleduje se úspěšnost **podle typu** (např. „odčítání s přechodem“), ne podle jednotlivých příkladů. Počítá se z posledních 10 pokusů.
 - Lekce mixuje asi 70 % aktuální látky a 30 % opakování slabých míst.
-- **Nápověda** (kouzlo Lumos) ukáže postup: 47 + 38 = 47 + 30 + 8, u násobilky obrázek skupin. Za nápovědu se nic neodečítá.
+- **Nápověda** (kouzlo Lumos) ukáže postup: 47 + 38 = 47 + 30 + 8, u násobilky obrázek skupin. Galeony za odpověď s nápovědou zůstávají, jen se nepočítá jako zvládnutá zpaměti.
 
 ## 6. Účty
 

@@ -167,6 +167,7 @@ function PlayerOverview({ id }: { id: number }) {
                 <span>{keyLabel(key)}</span>
                 <span class="muted">
                   {stat.correct}/{stat.seen} správně
+                  {stat.ms ? ` · průměrně ${Math.round(stat.ms / 1000)} s` : ''}
                 </span>
               </li>
             ))}
