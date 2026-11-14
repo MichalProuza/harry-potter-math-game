@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import type { Go } from '../app';
 import { Avatar } from '../components/Avatar';
+import { CoinIcon } from '../components/art';
 import { TopBar } from '../components/common';
 import { SHOP_ITEMS, SLOT_NAMES, type ShopItem, type Slot } from '../game/shop';
 import { buyItem, toggleEquip } from '../game/state';
@@ -35,10 +36,10 @@ export function Shop({ go, s }: { go: Go; s: PlayerSession }) {
 
   return (
     <main class="screen">
-      <TopBar session={s} onBack={() => go({ name: 'hub' })} title="🛍️ Příčná ulice" />
+      <TopBar session={s} onBack={() => go({ name: 'hub' })} title="Příčná ulice" />
       <div class="shop">
         <aside class="shop__preview">
-          <Avatar house={state.house} equipped={preview} size={170} animated />
+          <Avatar house={state.house} equipped={preview} size={190} animated />
           {selected ? (
             <div class="shop__detail">
               <h2>{selected.name}</h2>
@@ -88,10 +89,20 @@ export function Shop({ go, s }: { go: Go; s: PlayerSession }) {
                   }}
                 >
                   <span class="item__preview">
-                    <Avatar house={state.house} equipped={{ [item.slot]: item.id }} size={70} />
+                    <Avatar house={state.house} equipped={{ [item.slot]: item.id }} size={84} focus={item.slot} />
                   </span>
                   <span class="item__name">{item.name}</span>
-                  <span class="item__price">{worn ? '✅ nosíš' : owned ? 'máš' : `🪙 ${item.price}`}</span>
+                  <span class="item__price">
+                    {worn ? (
+                      '✓ nosíš'
+                    ) : owned ? (
+                      'máš'
+                    ) : (
+                      <>
+                        <CoinIcon size={16} /> {item.price}
+                      </>
+                    )}
+                  </span>
                 </button>
               );
             })}
@@ -127,13 +138,13 @@ function ItemAction({
   if (missing > 0) {
     return (
       <p class="muted">
-        Cena 🪙 {item.price}. Chybí ti ještě <strong>{missing}</strong> galeonů – to je pár lekcí!
+        Cena <CoinIcon size={16} /> {item.price}. Chybí ti ještě <strong>{missing}</strong> galeonů – to je pár lekcí!
       </p>
     );
   }
   return (
     <button type="button" class="btn btn--gold" onClick={() => onBuy(item)}>
-      Koupit za 🪙 {item.price}
+      Koupit za <CoinIcon size={18} /> {item.price}
     </button>
   );
 }
