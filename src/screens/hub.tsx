@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import type { Go } from '../app';
 import { Avatar } from '../components/Avatar';
+import { BranchIcon, Candles, Crest, SortingHat } from '../components/art';
 import { Stars, TopBar, XpBar } from '../components/common';
 import { HOUSES, type HouseId, SORTING_QUESTIONS, getHouse } from '../game/houses';
 import { BRANCHES, type BranchId, LESSONS_TO_PASS, getBranch } from '../game/levels';
@@ -45,8 +46,8 @@ export function Sorting({ go, s }: { go: Go; s: PlayerSession }) {
               style={{ '--house': h.primary, '--house2': h.secondary }}
               onClick={() => confirm(h.id)}
             >
-              <span class="house__icon">{h.icon}</span>
-              <strong>{h.name}</strong>
+              <Crest house={h.id} size={72} />
+              <strong class="house__name">{h.name}</strong>
               <span>{h.trait}</span>
             </button>
           ))}
@@ -59,11 +60,11 @@ export function Sorting({ go, s }: { go: Go; s: PlayerSession }) {
     const h = getHouse(chosen);
     return (
       <main class="screen screen--center">
-        <div class="sorting-hat">🎩</div>
+        <SortingHat />
         <p class="speech">„Hmm… už to vím! Patříš do…“</p>
         <div class="house house--big" style={{ '--house': h.primary, '--house2': h.secondary }}>
-          <span class="house__icon">{h.icon}</span>
-          <strong>{h.name.toUpperCase()}!</strong>
+          <Crest house={h.id} size={110} />
+          <strong class="house__name">{h.name}!</strong>
           <span>{h.trait}</span>
         </div>
         <div class="row">
@@ -81,7 +82,7 @@ export function Sorting({ go, s }: { go: Go; s: PlayerSession }) {
   const q = SORTING_QUESTIONS[step];
   return (
     <main class="screen screen--center">
-      <div class="sorting-hat">🎩</div>
+      <SortingHat />
       <p class="speech">
         {step === 0 && `Vítej v Kouzelné škole počtů, ${s.name}! Jsem moudrý klobouk a pomůžu ti najít tvou kolej. `}
         {q.q}
@@ -111,11 +112,14 @@ export function Hub({ go, s }: { go: Go; s: PlayerSession }) {
     <main class="screen">
       <TopBar session={s} title="Velká síň" />
       <section class="hero" style={house ? { '--house': house.primary, '--house2': house.secondary } : undefined}>
-        <Avatar house={state.house} equipped={state.equipped} size={150} animated />
+        <Candles />
+        <Avatar house={state.house} equipped={state.equipped} size={170} animated />
         <div class="hero__info">
           <h1 class="hero__name">{s.name}</h1>
           <p class="hero__rank">
-            {house ? `${house.icon} ${house.name}` : ''} · <strong>{rank.name}</strong>
+            {house && <Crest house={house.id} size={22} />}
+            {house ? `${house.name} · ` : ''}
+            <strong>{rank.name}</strong>
           </p>
           <XpBar xp={state.xp} />
           <p class="hero__streak">
@@ -143,11 +147,19 @@ export function Hub({ go, s }: { go: Go; s: PlayerSession }) {
               style={{ '--branch': b.color }}
               onClick={() => go({ name: 'branch', branch: b.id })}
             >
-              <span class="branch-card__icon">{b.icon}</span>
+              <span class="branch-card__icon">
+                <BranchIcon branch={b.id} />
+              </span>
               <span class="branch-card__name">{b.name}</span>
               <span class="branch-card__subject">{b.subject}</span>
               <span class="branch-card__meta">
-                Zvládnuto {done}/{b.levels.length} · odemčeno {unlocked} · ★ {stars}
+                <span class="meter" aria-hidden="true">
+                  <span class="meter__fill" style={{ width: `${(done / b.levels.length) * 100}%` }} />
+                </span>
+                <span>
+                  Zvládnuto {done}/{b.levels.length} · odemčeno {unlocked}
+                </span>
+                <span class="branch-card__stars">★ {stars}</span>
               </span>
             </button>
           );
@@ -174,25 +186,31 @@ function daysWord(n: number): string {
 export function BranchMap({ go, s, branch }: { go: Go; s: PlayerSession; branch: BranchId }) {
   const def = getBranch(branch);
   const unlocked = unlockedUpTo(s.state, branch, s.overrides);
+  /** První odemčená úroveň, která ještě není zvládnutá – ta se zvýrazní. */
+  const firstOpen = def.levels.find((l) => l.n <= unlocked && levelProgress(s.state, branch, l.n).passed < LESSONS_TO_PASS)?.n;
 
   return (
     <main class="screen">
-      <TopBar session={s} onBack={() => go({ name: 'hub' })} title={`${def.icon} ${def.name}`} />
+      <TopBar session={s} onBack={() => go({ name: 'hub' })} title={def.name} />
+      <div class="branch-head" style={{ '--branch': def.color }}>
+        <BranchIcon branch={branch} size={72} />
+      </div>
       <p class="branch-subject">{def.subject}</p>
       <ol class="levels" style={{ '--branch': def.color }}>
         {def.levels.map((l) => {
           const p = levelProgress(s.state, branch, l.n);
           const locked = l.n > unlocked;
           const done = p.passed >= LESSONS_TO_PASS;
+          const current = !locked && !done && l.n === firstOpen;
           return (
-            <li key={l.n} class={`level ${locked ? 'level--locked' : ''} ${done ? 'level--done' : ''}`}>
+            <li key={l.n} class={`level ${locked ? 'level--locked' : ''} ${done ? 'level--done' : ''} ${current ? 'level--current' : ''}`}>
               <button
                 type="button"
                 class="level__btn"
                 disabled={locked}
                 onClick={() => go({ name: 'lesson', branch, level: l.n })}
               >
-                <span class="level__num">{locked ? '🔒' : l.n}</span>
+                <span class="level__num">{locked ? '🔒' : done ? '✓' : l.n}</span>
                 <span class="level__text">
                   <strong>{l.title}</strong>
                   <span class="muted">{l.example}</span>

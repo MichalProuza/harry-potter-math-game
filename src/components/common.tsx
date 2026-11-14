@@ -1,6 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { rankFor } from '../game/state';
 import type { PlayerSession } from '../session';
+import { CoinIcon } from './art';
 
 export function Stars({ count, max = 3, size = 'md' }: { count: number; max?: number; size?: 'sm' | 'md' | 'lg' }) {
   return (
@@ -17,7 +18,7 @@ export function Stars({ count, max = 3, size = 'md' }: { count: number; max?: nu
 export function Coins({ amount }: { amount: number }) {
   return (
     <span class="coins" title="Galeony">
-      <span class="coin">🪙</span> {amount}
+      <CoinIcon /> {amount}
     </span>
   );
 }
@@ -25,7 +26,7 @@ export function Coins({ amount }: { amount: number }) {
 interface TopBarProps {
   session: PlayerSession;
   onBack?: () => void;
-  title?: string;
+  title?: ComponentChildren;
   children?: ComponentChildren;
 }
 

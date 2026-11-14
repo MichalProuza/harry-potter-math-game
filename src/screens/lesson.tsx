@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import type { Go } from '../app';
 import { Avatar } from '../components/Avatar';
+import { BranchIcon, Burst, Confetti } from '../components/art';
 import { Coins, Stars } from '../components/common';
 import { Keypad } from '../components/Keypad';
 import { buildLesson } from '../game/lesson';
@@ -195,7 +196,7 @@ export function Lesson({
       </header>
 
       <p class="lesson__title">
-        {def.icon} {levelDef.title}
+        <BranchIcon branch={branch} size={26} /> {levelDef.title}
       </p>
 
       <div class={`problem ${feedback ? (feedback.ok ? 'problem--ok' : 'problem--wrong') : ''}`}>
@@ -205,6 +206,7 @@ export function Lesson({
           <span class={`answer-box ${shown ? '' : 'answer-box--empty'}`}>{shown || '?'}</span>
           <span>{right}</span>
         </div>
+        {feedback?.ok && <Burst />}
         {feedback?.ok && (
           <div class="sparkles" aria-live="polite">
             ✨ {feedback.text} ✨
@@ -273,7 +275,10 @@ export function Results({
 
   return (
     <main class="screen screen--center results">
-      <Avatar house={s.state.house} equipped={s.state.equipped} size={120} animated />
+      {outcome.passed && <Confetti />}
+      <div class={outcome.passed ? 'results__hero results__hero--rays' : 'results__hero'}>
+        <Avatar house={s.state.house} equipped={s.state.equipped} size={150} animated />
+      </div>
       <h1 class="title">{title}</h1>
       <Stars count={outcome.stars} size="lg" />
       <p class="results__score">
@@ -283,7 +288,7 @@ export function Results({
         <span class="reward">
           +<Coins amount={outcome.coins} />
         </span>
-        <span class="reward">+{outcome.xp} XP</span>
+        <span class="reward reward--xp">+{outcome.xp} XP</span>
       </div>
       {outcome.dailyBonus && (
         <p class="badge">

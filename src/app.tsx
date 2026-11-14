@@ -8,6 +8,7 @@ import { Lesson, Results } from './screens/lesson';
 import { ParentZone } from './screens/parent';
 import { Shop } from './screens/shop';
 import { loadLesson } from './lessonStore';
+import { Backdrop } from './components/art';
 import { session, useSession } from './session';
 
 export type Screen =
@@ -46,6 +47,15 @@ function screenAbove(s: Screen): Screen | null {
 }
 
 export function App() {
+  return (
+    <>
+      <Backdrop />
+      <Screens />
+    </>
+  );
+}
+
+function Screens() {
   const [screen, setScreen] = useState<Screen>({ name: 'boot' });
   // každá navigace dostane nový klíč, aby se např. „Další lekce“ spustila nanovo
   const [nav, setNav] = useState(0);
